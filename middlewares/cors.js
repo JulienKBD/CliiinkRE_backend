@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const corsMiddleware = (req, res, next) => {
-    const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const allowedOrigin = process.env.FRONTEND_URL || 'https://cliiink-re.vercel.app/';
     res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, PUT, PATCH, OPTIONS');
