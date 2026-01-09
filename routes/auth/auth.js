@@ -44,7 +44,7 @@ router.post('/api/auth/login', async (req, res) => {
 
 // POST - Register
 router.post('/api/auth/register', async (req, res) => {
-    const { email, password, name, role } = req.body;
+    const { email, password, firstName, lastName, phone, name, role } = req.body;
 
     if (!email || !password) {
         return res.status(400).json({ error: 'Email et mot de passe requis' });
@@ -59,10 +59,13 @@ router.post('/api/auth/register', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 12);
         const id = `user-${Date.now()}`;
+        
+        // Build name from firstName/lastName or use provided name
+        const fullName = firstName && lastName ? `${firstName} ${lastName}` : name || 'Utilisateur';
 
         await pool.query(
-            'INSERT INTO users (id, email, password, name, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, NOW(), NOW())',
-            [id, email, hashedPassword, name, role || 'EDITOR']
+            'INSERT INTO users (id, email, password, name, phone, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())',
+            [id, email, hashedPassword, fullName, phone || null, role || 'USER']
         );
 
         res.status(201).json({ id, message: 'Utilisateur créé avec succès' });
