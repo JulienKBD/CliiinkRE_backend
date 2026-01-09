@@ -2,10 +2,36 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
 
-// GET all articles
+// GET all articles (with optional filters)
 router.get('/api/articles', async (req, res) => {
     try {
-        const [results] = await pool.query('SELECT * FROM articles ORDER BY createdAt DESC');
+        const { category, isFeatured, limit } = req.query;
+
+        let query = 'SELECT * FROM articles WHERE 1=1';
+        const params = [];
+
+        // Filter by category
+        if (category && category !== 'ALL') {
+            query += ' AND category = ?';
+            params.push(category);
+        }
+
+        // Filter by isFeatured
+        if (isFeatured !== undefined) {
+            query += ' AND isFeatured = ?';
+            params.push(isFeatured === 'true' ? 1 : 0);
+        }
+
+        // Order by date
+        query += ' ORDER BY createdAt DESC';
+
+        // Limit results
+        if (limit) {
+            query += ' LIMIT ?';
+            params.push(parseInt(limit, 10));
+        }
+
+        const [results] = await pool.query(query, params);
         res.json(results);
     } catch (err) {
         console.error('Error fetching articles:', err);

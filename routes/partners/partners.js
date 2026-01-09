@@ -2,10 +2,48 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
 
-// GET all partners
+// GET all partners (with optional filters)
 router.get('/api/partners', async (req, res) => {
     try {
-        const [results] = await pool.query('SELECT * FROM partners ORDER BY name ASC');
+        const { category, isActive, isFeatured, city, limit } = req.query;
+
+        let query = 'SELECT * FROM partners WHERE 1=1';
+        const params = [];
+
+        // Filter by category
+        if (category && category !== 'ALL') {
+            query += ' AND category = ?';
+            params.push(category);
+        }
+
+        // Filter by isActive
+        if (isActive !== undefined) {
+            query += ' AND isActive = ?';
+            params.push(isActive === 'true' ? 1 : 0);
+        }
+
+        // Filter by isFeatured
+        if (isFeatured !== undefined) {
+            query += ' AND isFeatured = ?';
+            params.push(isFeatured === 'true' ? 1 : 0);
+        }
+
+        // Filter by city
+        if (city) {
+            query += ' AND city = ?';
+            params.push(city);
+        }
+
+        // Order by name
+        query += ' ORDER BY name ASC';
+
+        // Limit results
+        if (limit) {
+            query += ' LIMIT ?';
+            params.push(parseInt(limit, 10));
+        }
+
+        const [results] = await pool.query(query, params);
         res.json(results);
     } catch (err) {
         console.error('Error fetching partners:', err);
