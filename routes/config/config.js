@@ -25,7 +25,7 @@ router.get('/api/config/:key', (req, res) => {
 router.put('/api/config/:key', (req, res) => {
     const { value } = req.body;
     if (value === undefined) return res.status(400).json({ error: 'Valeur requise' });
-    
+
     pool.query('UPDATE site_config SET value = ?, updatedAt = NOW() WHERE `key` = ?', [value, req.params.key], (err, results) => {
         if (err) return res.status(500).json({ error: 'Erreur serveur' });
         if (results.affectedRows === 0) return res.status(404).json({ error: 'Configuration non trouvée' });
@@ -37,7 +37,7 @@ router.put('/api/config/:key', (req, res) => {
 router.post('/api/config', (req, res) => {
     const { key, value, description } = req.body;
     if (!key || value === undefined) return res.status(400).json({ error: 'Clé et valeur requises' });
-    
+
     const id = `config-${Date.now()}`;
     pool.query('INSERT INTO site_config (id, `key`, value, description, updatedAt) VALUES (?, ?, ?, ?, NOW())', [id, key, value, description], (err) => {
         if (err) {
