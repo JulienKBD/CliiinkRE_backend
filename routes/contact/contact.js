@@ -2,6 +2,30 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
 
+// Fonction pour vérifier le token reCAPTCHA (v2)
+async function verifyRecaptcha(token) {
+    if (!token) return { success: false };
+
+    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+    if (!secretKey) {
+        console.warn('reCAPTCHA secret key not configured');
+        return { success: true }; // Bypass en dev si pas configuré
+    }
+
+    try {
+        const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `secret=${secretKey}&response=${token}`,
+        });
+        const data = await response.json();
+        return { success: data.success };
+    } catch (error) {
+        console.error('reCAPTCHA verification error:', error);
+        return { success: false };
+    }
+}
+
 // GET all contact messages
 router.get('/api/contact', async (req, res) => {
     try {
@@ -30,7 +54,15 @@ router.get('/api/contact/:id', async (req, res) => {
 // POST create contact message
 router.post('/api/contact', async (req, res) => {
     try {
-        const { type, name, email, message, companyName, phone, position } = req.body;
+        const { type, name, email, message, companyName, phone, position, recaptchaToken } = req.body;
+
+        // Vérifier le reCAPTCHA
+        const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+        if (!recaptchaResult.success) {
+            console.warn('reCAPTCHA verification failed:', recaptchaResult);
+            return res.status(400).json({ error: 'Vérification anti-spam échouée. Veuillez cocher la case "Je ne suis pas un robot".' });
+        }
+
         const id = `msg-${Date.now()}`;
         const [result] = await pool.query(
             'INSERT INTO contact_messages (id, type, name, email, message, companyName, phone, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
