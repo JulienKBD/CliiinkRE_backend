@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
 
+// Helper function to format date for MySQL (YYYY-MM-DD HH:MM:SS)
+function formatDateForMySQL(date) {
+    if (!date) return null;
+    const d = new Date(date);
+    return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 // GET all articles (with optional filters)
 router.get('/api/articles', async (req, res) => {
     try {
@@ -94,7 +101,7 @@ router.post('/api/articles', async (req, res) => {
         
         const id = `article-${Date.now()}`;
         const tagsJson = Array.isArray(tags) ? JSON.stringify(tags) : (tags || '[]');
-        const publishedAt = isPublished ? new Date().toISOString() : null;
+        const publishedAt = isPublished ? formatDateForMySQL(new Date()) : null;
         
         await pool.query(
             `INSERT INTO articles (id, title, slug, excerpt, content, imageUrl, category, tags, isPublished, isFeatured, publishedAt, authorId, createdAt, updatedAt) 
@@ -115,7 +122,7 @@ router.put('/api/articles/:id', async (req, res) => {
         const { title, slug, excerpt, content, imageUrl, category, tags, isPublished, isFeatured } = req.body;
         
         const tagsJson = Array.isArray(tags) ? JSON.stringify(tags) : tags;
-        const publishedAt = isPublished ? new Date().toISOString() : null;
+        const publishedAt = isPublished ? formatDateForMySQL(new Date()) : null;
         
         const [result] = await pool.query(
             `UPDATE articles SET 
