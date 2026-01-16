@@ -39,8 +39,38 @@ router.get('/api/articles', async (req, res) => {
     }
 });
 
+// GET all articles for admin (including drafts)
+router.get('/api/articles/admin/all', async (req, res) => {
+    try {
+        const [results] = await pool.query(`
+            SELECT a.*, u.name as authorName 
+            FROM articles a 
+            LEFT JOIN users u ON a.authorId = u.id 
+            ORDER BY a.createdAt DESC
+        `);
+        res.json(results);
+    } catch (err) {
+        console.error('Error fetching articles for admin:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET article by ID (for admin)
+router.get('/api/articles/id/:id', async (req, res) => {
+    try {
+        const [results] = await pool.query('SELECT * FROM articles WHERE id = ?', [req.params.id]);
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Article non trouvé' });
+        }
+        res.json(results[0]);
+    } catch (err) {
+        console.error('Error fetching article by id:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // GET article by slug
-router.get('/api/articles/:slug', async (req, res) => {
+router.get('/api/articles/slug/:slug', async (req, res) => {
     try {
         const [results] = await pool.query('SELECT * FROM articles WHERE slug = ?', [req.params.slug]);
         if (results.length === 0) {
@@ -56,12 +86,23 @@ router.get('/api/articles/:slug', async (req, res) => {
 // POST create article
 router.post('/api/articles', async (req, res) => {
     try {
-        const { title, slug, content, excerpt, image_url, category } = req.body;
-        const [result] = await pool.query(
-            'INSERT INTO articles (title, slug, content, excerpt, image_url, category) VALUES (?, ?, ?, ?, ?, ?)',
-            [title, slug, content, excerpt, image_url, category]
+        const { title, slug, excerpt, content, imageUrl, category, tags, isPublished, isFeatured, authorId } = req.body;
+        
+        if (!title || !slug || !content || !category || !authorId) {
+            return res.status(400).json({ error: 'Champs requis manquants (title, slug, content, category, authorId)' });
+        }
+        
+        const id = `article-${Date.now()}`;
+        const tagsJson = Array.isArray(tags) ? JSON.stringify(tags) : (tags || '[]');
+        const publishedAt = isPublished ? new Date().toISOString() : null;
+        
+        await pool.query(
+            `INSERT INTO articles (id, title, slug, excerpt, content, imageUrl, category, tags, isPublished, isFeatured, publishedAt, authorId, createdAt, updatedAt) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            [id, title, slug, excerpt, content, imageUrl, category, tagsJson, 
+             isPublished ? 1 : 0, isFeatured ? 1 : 0, publishedAt, authorId]
         );
-        res.status(201).json({ id: result.insertId, message: 'Article créé' });
+        res.status(201).json({ id, message: 'Article créé avec succès' });
     } catch (err) {
         console.error('Error creating article:', err);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -71,10 +112,23 @@ router.post('/api/articles', async (req, res) => {
 // PUT update article
 router.put('/api/articles/:id', async (req, res) => {
     try {
-        const { title, slug, content, excerpt, image_url, category } = req.body;
+        const { title, slug, excerpt, content, imageUrl, category, tags, isPublished, isFeatured } = req.body;
+        
+        const tagsJson = Array.isArray(tags) ? JSON.stringify(tags) : tags;
+        const publishedAt = isPublished ? new Date().toISOString() : null;
+        
         const [result] = await pool.query(
-            'UPDATE articles SET title = ?, slug = ?, content = ?, excerpt = ?, image_url = ?, category = ? WHERE id = ?',
-            [title, slug, content, excerpt, image_url, category, req.params.id]
+            `UPDATE articles SET 
+             title = COALESCE(?, title), slug = COALESCE(?, slug), excerpt = ?,
+             content = COALESCE(?, content), imageUrl = ?, category = COALESCE(?, category),
+             tags = COALESCE(?, tags), isPublished = COALESCE(?, isPublished), 
+             isFeatured = COALESCE(?, isFeatured), publishedAt = COALESCE(?, publishedAt),
+             updatedAt = NOW() 
+             WHERE id = ?`,
+            [title, slug, excerpt, content, imageUrl, category, tagsJson,
+             isPublished !== undefined ? (isPublished ? 1 : 0) : null,
+             isFeatured !== undefined ? (isFeatured ? 1 : 0) : null,
+             publishedAt, req.params.id]
         );
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Article non trouvé' });

@@ -51,8 +51,22 @@ router.get('/api/partners', async (req, res) => {
     }
 });
 
+// GET partner by ID (for admin)
+router.get('/api/partners/id/:id', async (req, res) => {
+    try {
+        const [results] = await pool.query('SELECT * FROM partners WHERE id = ?', [req.params.id]);
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Partenaire non trouvé' });
+        }
+        res.json(results[0]);
+    } catch (err) {
+        console.error('Error fetching partner by id:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // GET partner by slug
-router.get('/api/partners/:slug', async (req, res) => {
+router.get('/api/partners/slug/:slug', async (req, res) => {
     try {
         const [results] = await pool.query('SELECT * FROM partners WHERE slug = ?', [req.params.slug]);
         if (results.length === 0) {
@@ -68,12 +82,31 @@ router.get('/api/partners/:slug', async (req, res) => {
 // POST create partner
 router.post('/api/partners', async (req, res) => {
     try {
-        const { name, slug, description, logo_url, website_url, category } = req.body;
-        const [result] = await pool.query(
-            'INSERT INTO partners (name, slug, description, logo_url, website_url, category) VALUES (?, ?, ?, ?, ?, ?)',
-            [name, slug, description, logo_url, website_url, category]
+        const {
+            name, slug, description, longDescription, category,
+            logoUrl, imageUrl, address, city, zipCode,
+            latitude, longitude, phone, email, website,
+            advantages, pointsRequired, discount, isActive, isFeatured
+        } = req.body;
+
+        if (!name || !slug || !category || !address || !city || !zipCode) {
+            return res.status(400).json({ error: 'Champs requis manquants (name, slug, category, address, city, zipCode)' });
+        }
+
+        const id = `partner-${Date.now()}`;
+        const advantagesJson = Array.isArray(advantages) ? JSON.stringify(advantages) : (advantages || '[]');
+
+        await pool.query(
+            `INSERT INTO partners (id, name, slug, description, longDescription, category,
+             logoUrl, imageUrl, address, city, zipCode, latitude, longitude,
+             phone, email, website, advantages, pointsRequired, discount, isActive, isFeatured, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            [id, name, slug, description, longDescription, category,
+             logoUrl, imageUrl, address, city, zipCode, latitude || null, longitude || null,
+             phone, email, website, advantagesJson, pointsRequired || null, discount,
+             isActive !== false ? 1 : 0, isFeatured === true ? 1 : 0]
         );
-        res.status(201).json({ id: result.insertId, message: 'Partenaire créé' });
+        res.status(201).json({ id, message: 'Partenaire créé avec succès' });
     } catch (err) {
         console.error('Error creating partner:', err);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -83,10 +116,31 @@ router.post('/api/partners', async (req, res) => {
 // PUT update partner
 router.put('/api/partners/:id', async (req, res) => {
     try {
-        const { name, slug, description, logo_url, website_url, category } = req.body;
+        const { 
+            name, slug, description, longDescription, category, 
+            logoUrl, imageUrl, address, city, zipCode, 
+            latitude, longitude, phone, email, website, 
+            advantages, pointsRequired, discount, isActive, isFeatured 
+        } = req.body;
+        
+        const advantagesJson = Array.isArray(advantages) ? JSON.stringify(advantages) : advantages;
+        
         const [result] = await pool.query(
-            'UPDATE partners SET name = ?, slug = ?, description = ?, logo_url = ?, website_url = ?, category = ? WHERE id = ?',
-            [name, slug, description, logo_url, website_url, category, req.params.id]
+            `UPDATE partners SET 
+             name = COALESCE(?, name), slug = COALESCE(?, slug), description = COALESCE(?, description),
+             longDescription = COALESCE(?, longDescription), category = COALESCE(?, category),
+             logoUrl = ?, imageUrl = ?, address = COALESCE(?, address), city = COALESCE(?, city),
+             zipCode = COALESCE(?, zipCode), latitude = ?, longitude = ?,
+             phone = ?, email = ?, website = ?, advantages = COALESCE(?, advantages),
+             pointsRequired = ?, discount = ?, isActive = COALESCE(?, isActive), 
+             isFeatured = COALESCE(?, isFeatured), updatedAt = NOW() 
+             WHERE id = ?`,
+            [name, slug, description, longDescription, category,
+             logoUrl, imageUrl, address, city, zipCode, latitude, longitude,
+             phone, email, website, advantagesJson, pointsRequired, discount,
+             isActive !== undefined ? (isActive ? 1 : 0) : null,
+             isFeatured !== undefined ? (isFeatured ? 1 : 0) : null,
+             req.params.id]
         );
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Partenaire non trouvé' });

@@ -48,7 +48,8 @@ app.delete('/api/bornes/:id', bornesRoutes);
 
 // Partners
 app.get('/api/partners', partnersRoutes);
-app.get('/api/partners/:slug', partnersRoutes);
+app.get('/api/partners/id/:id', partnersRoutes);
+app.get('/api/partners/slug/:slug', partnersRoutes);
 app.post('/api/partners', partnersRoutes);
 app.put('/api/partners/:id', partnersRoutes);
 app.delete('/api/partners/:id', partnersRoutes);
@@ -58,6 +59,7 @@ app.get('/api/articles', articlesRoutes);
 app.get('/api/articles/admin/all', articlesRoutes);
 app.get('/api/articles/categories/list', articlesRoutes);
 app.get('/api/articles/slug/:slug', articlesRoutes);
+app.get('/api/articles/id/:id', articlesRoutes);
 app.get('/api/articles/:id', articlesRoutes);
 app.post('/api/articles', articlesRoutes);
 app.put('/api/articles/:id', articlesRoutes);
