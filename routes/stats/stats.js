@@ -46,9 +46,20 @@ router.get('/api/stats', async (req, res) => {
             // site_config might not have this key
         }
 
+        // Get total partners from site_config (use DB count as minimum)
+        let totalPartners = partnersResults[0].count;
+        try {
+            const [configResults] = await pool.query("SELECT value FROM site_config WHERE `key` = 'total_partners'");
+            if (configResults.length > 0 && parseInt(configResults[0].value) > partnersResults[0].count) {
+                totalPartners = parseInt(configResults[0].value) || partnersResults[0].count;
+            }
+        } catch (e) {
+            // site_config might not have this key
+        }
+
         res.json({
             totalBornes: bornesResults[0].count,
-            totalPartners: partnersResults[0].count,
+            totalPartners: totalPartners,
             totalArticles: articlesResults[0].count,
             totalUsers: totalUsers,
             totalGlassCollected: totalGlassCollected
