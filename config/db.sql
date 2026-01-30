@@ -142,13 +142,13 @@ CREATE TABLE IF NOT EXISTS statistics (
 -- DONNÉES INITIALES
 -- ============================================
 
-INSERT INTO users (id, email, password, name, role, createdAt, updatedAt) VALUES
+INSERT IGNORE INTO users (id, email, password, name, role, createdAt, updatedAt) VALUES
 ('cliiink-admin-001', 'admin@cliiinkreunion.re', '$2a$12$0HWIDuZYIzCb0pBm5CckhuiRBXnerN6A4ifcoq86yLOAO7h8O7.cC', 'Administrateur', 'ADMIN', NOW(), NOW());
 
 -- ============================================
 -- BORNES DE TRI (90 bornes - données Neogreen)
 -- ============================================
-INSERT INTO bornes (id, name, address, city, zipCode, latitude, longitude, status, description, createdAt, updatedAt) VALUES
+INSERT IGNORE INTO bornes (id, name, address, city, zipCode, latitude, longitude, status, description, createdAt, updatedAt) VALUES
 ('borne-001', 'Rue Azema', 'Rue Azema', 'Bras-Panon', '97412', -20.980832, 55.642729, 'ACTIVE', 'Installation verre - Bras-Panon', NOW(), NOW()),
 ('borne-002', 'Chemin Bellevue', 'Chemin Bellevue', 'Bras-Panon', '97412', -20.983749, 55.643053, 'ACTIVE', 'Installation verre - Bras-Panon', NOW(), NOW()),
 ('borne-003', 'Chemin Notre-Dame du Rosaire', 'Chemin Notre-Dame du Rosaire', 'Bras-Panon', '97412', -20.988631, 55.632164, 'ACTIVE', 'Installation verre - Bras-Panon', NOW(), NOW()),
@@ -243,7 +243,7 @@ INSERT INTO bornes (id, name, address, city, zipCode, latitude, longitude, statu
 -- ============================================
 -- PARTENAIRES
 -- ============================================
-INSERT INTO partners (id, name, slug, description, longDescription, category, address, city, zipCode, latitude, longitude, phone, email, website, advantages, pointsRequired, discount, isActive, isFeatured, createdAt, updatedAt) VALUES
+INSERT IGNORE INTO partners (id, name, slug, description, longDescription, category, address, city, zipCode, latitude, longitude, phone, email, website, advantages, pointsRequired, discount, isActive, isFeatured, createdAt, updatedAt) VALUES
 ('partner-001', 'Le Comptoir Créole', 'le-comptoir-creole', 'Restaurant traditionnel réunionnais', 'Découvrez les saveurs authentiques de La Réunion dans ce restaurant familial. Cari, rougail, et spécialités locales vous attendent.', 'RESTAURANT', '45 Rue Pasteur', 'Saint-Denis', '97400', -20.8792, 55.4456, '0262 21 45 67', 'contact@comptoircreole.re', NULL, '["10% de réduction sur l''addition", "Apéritif offert"]', 100, '-10%', TRUE, TRUE, NOW(), NOW()),
 ('partner-002', 'Ti Punch Bar', 'ti-punch-bar', 'Bar ambiance tropicale', 'Le meilleur rhum arrangé de l''île ! Ambiance conviviale et musicale tous les weekends.', 'BAR', '12 Front de Mer', 'Saint-Pierre', '97410', -21.3401, 55.4789, '0262 35 78 90', NULL, NULL, '["1 Ti Punch offert pour 200 points", "Happy Hour prolongé"]', 200, '1 boisson offerte', TRUE, TRUE, NOW(), NOW()),
 ('partner-003', 'Boutique Vanille Bourbon', 'boutique-vanille-bourbon', 'Épicerie fine et produits locaux', 'Vanille, épices, confitures artisanales et produits du terroir réunionnais.', 'BOUTIQUE', '8 Rue du Commerce', 'Saint-Paul', '97460', -21.0098, 55.2715, '0262 22 33 44', NULL, 'https://vanille-bourbon.re', '["15% sur les achats", "Échantillon vanille offert"]', 150, '-15%', TRUE, TRUE, NOW(), NOW()),
@@ -254,7 +254,7 @@ INSERT INTO partners (id, name, slug, description, longDescription, category, ad
 -- ============================================
 -- ARTICLES
 -- ============================================
-INSERT INTO articles (id, title, slug, excerpt, content, category, tags, isPublished, isFeatured, publishedAt, views, authorId, createdAt, updatedAt) VALUES
+INSERT IGNORE INTO articles (id, title, slug, excerpt, content, category, tags, isPublished, isFeatured, publishedAt, views, authorId, createdAt, updatedAt) VALUES
 ('article-001', 'Lancement de Cliiink à La Réunion !', 'lancement-cliiink-reunion', 'Le dispositif Cliiink arrive enfin sur notre île. Découvrez comment gagner des récompenses en triant vos bouteilles en verre.', '# Cliiink débarque à La Réunion !\n\nNous sommes fiers d''annoncer le lancement officiel du dispositif **Cliiink** sur l''île de La Réunion.\n\n## Comment ça marche ?\n\n1. **Téléchargez l''application** Cliiink sur votre smartphone\n2. **Déposez vos bouteilles en verre** dans une borne connectée\n3. **Cumulez des points** à chaque dépôt\n4. **Profitez de récompenses** chez nos partenaires\n\n## Les premières bornes\n\nDès aujourd''hui, **90 bornes** sont disponibles dans l''Est de l''île :\n- Bras-Panon (14 bornes)\n- La Plaine-des-Palmistes (5 bornes)\n- Saint-André (29 bornes)\n- Salazie (6 bornes)\n- Saint-Benoît (30 bornes)\n- Sainte-Rose (6 bornes)\n\n## Un geste écologique récompensé\n\nChaque bouteille compte ! En moyenne, un foyer réunionnais consomme plus de **100 bouteilles en verre par an**. Avec Cliiink, ce geste de tri devient doublement gagnant : pour la planète et pour votre portefeuille.\n\n*Rejoignez le mouvement et commencez à cumuler des points dès aujourd''hui !*', 'ACTUALITE', '["lancement", "cliiink", "réunion", "tri"]', TRUE, TRUE, '2024-11-15 00:00:00', 0, 'cliiink-admin-001', NOW(), NOW()),
 ('article-002', 'Nos partenaires commerçants vous récompensent', 'partenaires-commercants-recompenses', 'Plus de 20 commerçants locaux vous offrent des réductions exclusives grâce à vos points Cliiink.', '# Découvrez nos partenaires\n\nLes commerçants réunionnais s''engagent avec Cliiink pour récompenser vos gestes éco-responsables.\n\n## Des avantages exclusifs\n\nRestaurants, bars, boutiques, supermarchés... Nos partenaires vous proposent :\n\n- **Réductions** sur vos achats (de 5% à 20%)\n- **Cadeaux** et produits offerts\n- **Expériences** uniques (spa, loisirs...)\n\n## Comment utiliser vos points ?\n\n1. Consultez la liste des partenaires sur notre site ou l''application\n2. Choisissez l''offre qui vous plaît\n3. Présentez votre QR code en caisse\n4. Profitez de votre récompense !\n\n## Rejoignez notre réseau de partenaires\n\nVous êtes commerçant et souhaitez rejoindre l''aventure Cliiink ? Contactez-nous pour en savoir plus sur les conditions de partenariat.', 'PARTENAIRES', '["partenaires", "récompenses", "commerçants"]', TRUE, TRUE, '2024-11-20 00:00:00', 0, 'cliiink-admin-001', NOW(), NOW()),
 ('article-003', '10 conseils pour bien trier le verre', '10-conseils-bien-trier-verre', 'Adoptez les bons réflexes pour un tri efficace et maximisez vos points Cliiink.', '# 10 conseils pour bien trier le verre\n\nLe tri du verre, c''est simple ! Suivez ces conseils pour devenir un pro du recyclage.\n\n## ✅ Ce qui va dans la borne\n\n1. **Bouteilles** de vin, bière, jus de fruits\n2. **Pots** de confiture, moutarde\n3. **Bocaux** en verre\n4. **Flacons** de parfum (vidés)\n\n## ❌ Ce qu''il faut éviter\n\n5. **Vaisselle** en verre (assiettes, verres)\n6. **Miroirs** et vitres\n7. **Ampoules** (déchetterie)\n8. **Céramique** et porcelaine\n\n## 💡 Astuces bonus\n\n9. **Inutile de rincer** : un simple égouttage suffit\n10. **Retirez les bouchons** en métal ou plastique\n\n## Le saviez-vous ?\n\nLe verre est recyclable **à l''infini** ! Une bouteille recyclée peut redevenir une bouteille en seulement 30 jours.\n\n*Avec Cliiink, chaque geste compte et rapporte !*', 'CONSEILS', '["conseils", "tri", "verre", "recyclage"]', TRUE, FALSE, '2024-11-25 00:00:00', 0, 'cliiink-admin-001', NOW(), NOW()),
@@ -263,7 +263,7 @@ INSERT INTO articles (id, title, slug, excerpt, content, category, tags, isPubli
 -- ============================================
 -- CONFIGURATION DU SITE
 -- ============================================
-INSERT INTO site_config (id, `key`, value, description, updatedAt) VALUES
+INSERT IGNORE INTO site_config (id, `key`, value, description, updatedAt) VALUES
 ('config-001', 'site_title', 'Cliiink Réunion - Triez, Gagnez, Préservez', 'Titre du site', NOW()),
 ('config-002', 'site_description', 'Cliiink Réunion : le dispositif de tri du verre qui vous récompense. Trouvez une borne, déposez vos bouteilles et gagnez des avantages chez nos partenaires.', 'Description SEO du site', NOW()),
 ('config-003', 'hero_title', 'Triez votre verre, gagnez des récompenses', 'Titre du hero banner', NOW()),
@@ -275,14 +275,3 @@ INSERT INTO site_config (id, `key`, value, description, updatedAt) VALUES
 -- ============================================
 -- INDEX POUR OPTIMISER LES PERFORMANCES
 -- ============================================
-CREATE INDEX idx_bornes_city ON bornes(city);
-CREATE INDEX idx_bornes_status ON bornes(status);
-CREATE INDEX idx_bornes_isActive ON bornes(isActive);
-CREATE INDEX idx_partners_category ON partners(category);
-CREATE INDEX idx_partners_isActive ON partners(isActive);
-CREATE INDEX idx_partners_isFeatured ON partners(isFeatured);
-CREATE INDEX idx_articles_category ON articles(category);
-CREATE INDEX idx_articles_isPublished ON articles(isPublished);
-CREATE INDEX idx_articles_publishedAt ON articles(publishedAt);
-CREATE INDEX idx_contact_messages_type ON contact_messages(type);
-CREATE INDEX idx_contact_messages_isRead ON contact_messages(isRead);
