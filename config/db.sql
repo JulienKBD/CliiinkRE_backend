@@ -142,10 +142,8 @@ CREATE TABLE IF NOT EXISTS statistics (
 -- DONNÉES INITIALES
 -- ============================================
 
--- Utilisateur admin (mot de passe: Admin123!)
--- Hash bcrypt pour 'Admin123!'
 INSERT INTO users (id, email, password, name, role, createdAt, updatedAt) VALUES
-('cliiink-admin-001', 'admin@cliiink-reunion.re', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4aoHi.nMBhWOqmKi', 'Administrateur', 'ADMIN', NOW(), NOW());
+('cliiink-admin-001', 'admin@cliiinkreunion.re', '$2a$12$0HWIDuZYIzCb0pBm5CckhuiRBXnerN6A4ifcoq86yLOAO7h8O7.cC', 'Administrateur', 'ADMIN', NOW(), NOW());
 
 -- ============================================
 -- BORNES DE TRI (90 bornes - données Neogreen)

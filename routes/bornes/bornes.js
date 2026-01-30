@@ -68,15 +68,15 @@ router.get('/api/bornes/:id', async (req, res) => {
 // POST - Créer borne
 router.post('/api/bornes', async (req, res) => {
     try {
-        const { name, address, city, zipCode, latitude, longitude, status, description } = req.body;
+        const { name, address, city, zipCode, latitude, longitude, status, description, isActive } = req.body;
         if (!name || !address || !city || !zipCode || !latitude || !longitude) {
             return res.status(400).json({ error: 'Champs requis manquants' });
         }
         
         const id = `borne-${Date.now()}`;
         await pool.query(
-            'INSERT INTO bornes (id, name, address, city, zipCode, latitude, longitude, status, description, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
-            [id, name, address, city, zipCode, latitude, longitude, status || 'ACTIVE', description]
+            'INSERT INTO bornes (id, name, address, city, zipCode, latitude, longitude, status, description, isActive, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
+            [id, name, address, city, zipCode, latitude, longitude, status || 'ACTIVE', description, isActive !== false ? 1 : 0]
         );
         res.status(201).json({ id, message: 'Borne créée avec succès' });
     } catch (err) {
