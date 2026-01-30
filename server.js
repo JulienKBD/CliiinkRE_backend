@@ -1,6 +1,7 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
+const path = require('path');
 require('dotenv').config();
 
 // Middlewares
@@ -17,6 +18,7 @@ const articlesRoutes = require('./routes/articles/articles.js');
 const contactRoutes = require('./routes/contact/contact.js');
 const statsRoutes = require('./routes/stats/stats.js');
 const configRoutes = require('./routes/config/config.js');
+const uploadRoutes = require('./routes/upload/upload.js');
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -27,9 +29,15 @@ app.use(cookieParser());
 app.use(corsMiddleware);
 app.use(loggingMiddleware);
 
+// Serve static files for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // ============================================
 // API Routes
 // ============================================
+
+// Upload (must be before other routes)
+app.use(uploadRoutes);
 
 // Authentication
 app.post('/api/auth/login', authRoutes);
