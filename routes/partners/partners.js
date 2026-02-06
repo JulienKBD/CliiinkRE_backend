@@ -75,7 +75,7 @@ router.get('/api/partners/categories/list', async (req, res) => {
 });
 
 // GET partner by slug
-router.get('/api/partners/:slug', async (req, res) => {
+router.get('/api/partners/slug/:slug', async (req, res) => {
     try {
         const [results] = await pool.query('SELECT * FROM partners WHERE slug = ?', [req.params.slug]);
         if (results.length === 0) {
