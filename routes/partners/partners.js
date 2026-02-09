@@ -88,6 +88,20 @@ router.get('/api/partners/slug/:slug', async (req, res) => {
     }
 });
 
+// GET partner by id
+router.get('/api/partners/id/:id', async (req, res) => {
+    try {
+        const [results] = await pool.query('SELECT * FROM partners WHERE id = ?', [req.params.slug]);
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Partenaire non trouvé' });
+        }
+        res.json(transformPartner(results[0]));
+    } catch (err) {
+        console.error('Error fetching partner:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // POST create partner
 router.post('/api/partners', async (req, res) => {
     try {
