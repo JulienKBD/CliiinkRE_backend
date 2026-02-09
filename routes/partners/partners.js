@@ -38,7 +38,7 @@ router.get('/api/partners', async (req, res) => {
         const { category, isFeatured, isActive } = req.query;
         let query = 'SELECT * FROM partners WHERE 1=1';
         const params = [];
-        
+
         if (category) {
             query += ' AND category = ?';
             params.push(category);
@@ -50,9 +50,9 @@ router.get('/api/partners', async (req, res) => {
             query += ' AND isActive = ?';
             params.push(isActive === 'true' ? 1 : 0);
         }
-        
+
         query += ' ORDER BY name ASC';
-        
+
         const [results] = await pool.query(query, params);
         res.json(results.map(transformPartner));
     } catch (err) {
@@ -91,7 +91,7 @@ router.get('/api/partners/slug/:slug', async (req, res) => {
 // GET partner by id
 router.get('/api/partners/id/:id', async (req, res) => {
     try {
-        const [results] = await pool.query('SELECT * FROM partners WHERE id = ?', [req.params.slug]);
+        const [results] = await pool.query('SELECT * FROM partners WHERE id = ?', [req.params.id]);
         if (results.length === 0) {
             return res.status(404).json({ error: 'Partenaire non trouvé' });
         }
@@ -105,25 +105,25 @@ router.get('/api/partners/id/:id', async (req, res) => {
 // POST create partner
 router.post('/api/partners', async (req, res) => {
     try {
-        const { 
-            name, slug, description, longDescription, category, 
+        const {
+            name, slug, description, longDescription, category,
             address, city, zipCode, latitude, longitude,
             phone, email, website, logoUrl, imageUrl,
             advantages, pointsRequired, discount, isActive, isFeatured
         } = req.body;
-        
+
         const advantagesJson = advantages ? JSON.stringify(advantages) : '[]';
         const now = new Date();
         const id = 'partner-' + Date.now();
-        
+
         const insertQuery = 'INSERT INTO partners (id, name, slug, description, longDescription, category, address, city, zipCode, latitude, longitude, phone, email, website, logoUrl, imageUrl, advantages, pointsRequired, discount, isActive, isFeatured, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-        
+
         await pool.query(insertQuery,
             [id, name, slug, description, longDescription, category, address, city, zipCode,
             latitude, longitude, phone, email, website, logoUrl, imageUrl,
             advantagesJson, pointsRequired, discount, isActive ? 1 : 0, isFeatured ? 1 : 0, now, now]
         );
-        
+
         const [newPartner] = await pool.query('SELECT * FROM partners WHERE id = ?', [id]);
         res.status(201).json(transformPartner(newPartner[0]));
     } catch (err) {
@@ -135,29 +135,29 @@ router.post('/api/partners', async (req, res) => {
 // PUT update partner
 router.put('/api/partners/:id', async (req, res) => {
     try {
-        const { 
-            name, slug, description, longDescription, category, 
+        const {
+            name, slug, description, longDescription, category,
             address, city, zipCode, latitude, longitude,
             phone, email, website, logoUrl, imageUrl,
             advantages, pointsRequired, discount, isActive, isFeatured
         } = req.body;
-        
+
         const advantagesJson = advantages ? JSON.stringify(advantages) : '[]';
         const now = new Date();
-        
+
         const updateQuery = 'UPDATE partners SET name = ?, slug = ?, description = ?, longDescription = ?, category = ?, address = ?, city = ?, zipCode = ?, latitude = ?, longitude = ?, phone = ?, email = ?, website = ?, logoUrl = ?, imageUrl = ?, advantages = ?, pointsRequired = ?, discount = ?, isActive = ?, isFeatured = ?, updatedAt = ? WHERE id = ?';
-        
+
         const [result] = await pool.query(updateQuery,
             [name, slug, description, longDescription, category,
             address, city, zipCode, latitude, longitude,
             phone, email, website, logoUrl, imageUrl,
             advantagesJson, pointsRequired, discount, isActive ? 1 : 0, isFeatured ? 1 : 0, now, req.params.id]
         );
-        
+
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Partenaire non trouvé' });
         }
-        
+
         const [updated] = await pool.query('SELECT * FROM partners WHERE id = ?', [req.params.id]);
         res.json(transformPartner(updated[0]));
     } catch (err) {
