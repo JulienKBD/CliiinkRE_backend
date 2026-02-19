@@ -58,11 +58,11 @@ router.post('/api/upload', upload.single('file'), (req, res) => {
         if (!req.file) {
             return res.status(400).json({ error: 'Aucun fichier envoyé' });
         }
-        
+
         const isVideo = req.file.mimetype.startsWith('video/');
         const subFolder = isVideo ? 'videos' : 'images';
         const fileUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/${subFolder}/${req.file.filename}`;
-        
+
         res.json({
             success: true,
             message: 'Fichier uploadé avec succès',
@@ -87,7 +87,7 @@ router.post('/api/upload/multiple', upload.array('files', 10), (req, res) => {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: 'Aucun fichier envoyé' });
         }
-        
+
         const uploadedFiles = req.files.map(file => {
             const isVideo = file.mimetype.startsWith('video/');
             const subFolder = isVideo ? 'videos' : 'images';
@@ -100,7 +100,7 @@ router.post('/api/upload/multiple', upload.array('files', 10), (req, res) => {
                 type: isVideo ? 'video' : 'image'
             };
         });
-        
+
         res.json({
             success: true,
             message: `${uploadedFiles.length} fichier(s) uploadé(s) avec succès`,
@@ -162,17 +162,17 @@ router.get('/api/upload/list', (req, res) => {
                 });
             }
         };
-        
+
         if (!type || type === 'images') {
             readDir(imagesDir, 'images');
         }
         if (!type || type === 'videos') {
             readDir(videosDir, 'videos');
         }
-        
+
         // Sort by creation date, newest first
         files.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
+
         res.json({ files });
     } catch (err) {
         console.error('Error listing files:', err);
@@ -184,22 +184,22 @@ router.get('/api/upload/list', (req, res) => {
 router.use((error, req, res, next) => {
     if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ 
-                error: 'Le fichier est trop volumineux. Taille max: 50MB' 
+            return res.status(400).json({
+                error: 'Le fichier est trop volumineux. Taille max: 50MB'
             });
         }
         if (error.code === 'LIMIT_FILE_COUNT') {
-            return res.status(400).json({ 
-                error: 'Trop de fichiers. Maximum: 10 fichiers' 
+            return res.status(400).json({
+                error: 'Trop de fichiers. Maximum: 10 fichiers'
             });
         }
         return res.status(400).json({ error: error.message });
     }
-    
+
     if (error) {
         return res.status(400).json({ error: error.message });
     }
-    
+
     next();
 });
 
