@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
 const nodemailer = require('nodemailer');
-const { createLogger } = require('../../utils/logger');
+const { createLogger, handleSqlError } = require('../../utils/logger');
 const log = createLogger('CONTACT');
 
 // Fonction pour vérifier le token reCAPTCHA (v2)
@@ -86,8 +86,9 @@ router.post('/api/contact', async (req, res) => {
         log.success(req, 201, `Message créé: id=${id}, de ${name} (${email})`);
         res.status(201).json({ id, message: 'Message envoyé avec succès' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur création message de ${req.body.name || '?'}`)) return;
         log.error(req, err, `Erreur création message de ${req.body.name || '?'}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de l\'envoi du message.' });
     }
 });
 
@@ -106,8 +107,9 @@ router.put('/api/contact/:id/read', async (req, res) => {
         log.success(req, 200, `Message marqué lu: id=${req.params.id}`);
         res.json({ message: 'Message marqué comme lu' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur marquage message lu id=${req.params.id}`)) return;
         log.error(req, err, `Erreur marquage message lu id=${req.params.id}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du message.' });
     }
 });
 
@@ -126,8 +128,9 @@ router.put('/api/contact/:id/archive', async (req, res) => {
         log.success(req, 200, `Message archivé: id=${req.params.id}`);
         res.json({ message: 'Message archivé' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur archivage message id=${req.params.id}`)) return;
         log.error(req, err, `Erreur archivage message id=${req.params.id}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de l\'archivage du message.' });
     }
 });
 
@@ -143,8 +146,9 @@ router.delete('/api/contact/:id', async (req, res) => {
         log.success(req, 200, `Message supprimé: id=${req.params.id}`);
         res.json({ message: 'Message supprimé' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur suppression message id=${req.params.id}`)) return;
         log.error(req, err, `Erreur suppression message id=${req.params.id}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la suppression du message.' });
     }
 });
 
@@ -269,8 +273,9 @@ router.post('/api/contact/:id/reply', async (req, res) => {
         });
 
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur envoi réponse pour message id=${req.params.id}`)) return;
         log.error(req, err, `Erreur envoi réponse pour message id=${req.params.id}`);
-        res.status(500).json({ error: 'Erreur lors de l\'envoi de la réponse' });
+        res.status(500).json({ error: 'Erreur lors de l\'envoi de la réponse. Vérifiez la configuration email.' });
     }
 });
 

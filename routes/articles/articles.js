@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
-const { createLogger } = require('../../utils/logger');
+const { createLogger, handleSqlError } = require('../../utils/logger');
 const log = createLogger('ARTICLES');
 
 // Helper function to ensure proper format for articles
@@ -144,8 +144,9 @@ router.post('/api/articles', async (req, res) => {
         log.success(req, 201, `Article créé avec id: ${id}`);
         res.status(201).json(transformArticle(newArticle[0]));
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur création article "${req.body.title || '?'}"`)) return;
         log.error(req, err, `Erreur création article "${req.body.title || '?'}"`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la création de l\'article.' });
     }
 });
 
@@ -173,8 +174,9 @@ router.put('/api/articles/:id', async (req, res) => {
         log.success(req, 200, `Article mis à jour: id=${req.params.id}`);
         res.json(transformArticle(updated[0]));
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur mise à jour article id=${req.params.id}`)) return;
         log.error(req, err, `Erreur mise à jour article id=${req.params.id}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la mise à jour de l\'article.' });
     }
 });
 
@@ -190,8 +192,9 @@ router.delete('/api/articles/:id', async (req, res) => {
         log.success(req, 200, `Article supprimé: id=${req.params.id}`);
         res.json({ message: 'Article supprimé' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur suppression article id=${req.params.id}`)) return;
         log.error(req, err, `Erreur suppression article id=${req.params.id}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la suppression de l\'article.' });
     }
 });
 

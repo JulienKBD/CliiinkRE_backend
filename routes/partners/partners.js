@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
-const { createLogger } = require('../../utils/logger');
+const { createLogger, handleSqlError } = require('../../utils/logger');
 const log = createLogger('PARTNERS');
 
 // Helper function to ensure proper format for partners
@@ -144,16 +144,8 @@ router.post('/api/partners', async (req, res) => {
         log.success(req, 201, `Partenaire créé: "${name}" (id: ${id})`);
         res.status(201).json(transformPartner(newPartner[0]));
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur création partenaire "${req.body.name || '?'}"`)) return;
         log.error(req, err, `Erreur création partenaire "${req.body.name || '?'}"`);
-        if (err.code === 'ER_DUP_ENTRY') {
-            const field = err.sqlMessage?.includes('slug') ? 'slug' : 'id';
-            log.warn(`Doublon détecté sur "${field}" (valeur: ${field === 'slug' ? req.body.slug : 'auto'})`);
-            return res.status(409).json({ error: `Un partenaire avec ce ${field === 'slug' ? 'slug (URL)' : 'identifiant'} existe déjà. Veuillez modifier le nom pour générer un slug différent.` });
-        }
-        if (err.code === 'ER_DATA_TOO_LONG') {
-            log.warn(`Donnée trop longue:`, err.sqlMessage);
-            return res.status(400).json({ error: 'Un des champs dépasse la taille maximale autorisée.' });
-        }
         res.status(500).json({ error: 'Erreur serveur lors de la création du partenaire.' });
     }
 });
@@ -192,16 +184,8 @@ router.put('/api/partners/:id', async (req, res) => {
         log.success(req, 200, `Partenaire mis à jour: "${name}" (id: ${req.params.id})`);
         res.json(transformPartner(updated[0]));
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur mise à jour partenaire id=${req.params.id} "${req.body.name || '?'}"`)) return;
         log.error(req, err, `Erreur mise à jour partenaire id=${req.params.id} "${req.body.name || '?'}"`);
-        if (err.code === 'ER_DUP_ENTRY') {
-            const field = err.sqlMessage?.includes('slug') ? 'slug' : 'id';
-            log.warn(`Doublon détecté sur "${field}" (valeur: ${field === 'slug' ? req.body.slug : req.params.id})`);
-            return res.status(409).json({ error: `Un autre partenaire utilise déjà ce ${field === 'slug' ? 'slug (URL)' : 'identifiant'}. Veuillez modifier le nom pour générer un slug différent.` });
-        }
-        if (err.code === 'ER_DATA_TOO_LONG') {
-            log.warn(`Donnée trop longue:`, err.sqlMessage);
-            return res.status(400).json({ error: 'Un des champs dépasse la taille maximale autorisée.' });
-        }
         res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du partenaire.' });
     }
 });
@@ -219,11 +203,8 @@ router.delete('/api/partners/:id', async (req, res) => {
         log.success(req, 200, `Partenaire supprimé: id=${req.params.id}`);
         res.json({ message: 'Partenaire supprimé' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur suppression partenaire id=${req.params.id}`)) return;
         log.error(req, err, `Erreur suppression partenaire id=${req.params.id}`);
-        if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-            log.warn(`Partenaire référencé ailleurs, suppression impossible: id=${req.params.id}`);
-            return res.status(409).json({ error: 'Ce partenaire est référencé ailleurs et ne peut pas être supprimé.' });
-        }
         res.status(500).json({ error: 'Erreur serveur lors de la suppression du partenaire.' });
     }
 });

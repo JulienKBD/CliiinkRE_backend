@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db.js');
-const { createLogger } = require('../../utils/logger');
+const { createLogger, handleSqlError } = require('../../utils/logger');
 const log = createLogger('CONFIG');
 
 // GET - Toute la config
@@ -55,8 +55,9 @@ router.put('/api/config/:key', async (req, res) => {
         log.success(req, 200, `Config mise à jour: key=${req.params.key}`);
         res.json({ message: 'Configuration mise à jour avec succès' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur mise à jour config key=${req.params.key}`)) return;
         log.error(req, err, `Erreur mise à jour config key=${req.params.key}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la mise à jour de la configuration.' });
     }
 });
 
@@ -76,12 +77,9 @@ router.post('/api/config', async (req, res) => {
         log.success(req, 201, `Config créée: key=${key}`);
         res.status(201).json({ message: 'Configuration créée avec succès' });
     } catch (err) {
-        if (err.code === 'ER_DUP_ENTRY') {
-            log.warn(`Config doublon: key=${req.body.key}`);
-            return res.status(400).json({ error: 'Cette clé existe déjà' });
-        }
+        if (handleSqlError(log, req, res, err, `Erreur création config key=${req.body.key}`)) return;
         log.error(req, err, `Erreur création config key=${req.body.key}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la création de la configuration.' });
     }
 });
 
@@ -98,8 +96,9 @@ router.delete('/api/config/:key', async (req, res) => {
         log.success(req, 200, `Config supprimée: key=${req.params.key}`);
         res.json({ message: 'Configuration supprimée avec succès' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur suppression config key=${req.params.key}`)) return;
         log.error(req, err, `Erreur suppression config key=${req.params.key}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la suppression de la configuration.' });
     }
 });
 

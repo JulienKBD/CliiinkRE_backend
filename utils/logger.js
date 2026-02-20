@@ -19,6 +19,157 @@ const COLORS = {
     bgYellow: '\x1b[43m',
 };
 
+/**
+ * Map des codes d'erreur MySQL/MariaDB vers des messages utilisateur clairs
+ * et des codes HTTP appropriés
+ */
+const SQL_ERROR_MAP = {
+    // Contraintes d'unicité
+    ER_DUP_ENTRY: {
+        status: 409,
+        message: (err) => {
+            // Extraire le champ en doublon depuis sqlMessage: "Duplicate entry 'xxx' for key 'table.field'"
+            const match = err.sqlMessage?.match(/for key '(?:[\w.]+\.)?(\w+)'/);
+            const field = match ? match[1] : 'inconnu';
+            const valueMatch = err.sqlMessage?.match(/Duplicate entry '(.+?)'/);
+            const value = valueMatch ? valueMatch[1] : '?';
+            return `Doublon détecté : la valeur "${value}" existe déjà pour le champ "${field}". Veuillez utiliser une valeur différente.`;
+        },
+    },
+    // Donnée trop longue pour la colonne
+    ER_DATA_TOO_LONG: {
+        status: 400,
+        message: (err) => {
+            const match = err.sqlMessage?.match(/column '(\w+)'/);
+            const field = match ? match[1] : 'inconnu';
+            return `La valeur du champ "${field}" dépasse la taille maximale autorisée. Veuillez raccourcir le texte.`;
+        },
+    },
+    // Colonne ne peut pas être NULL
+    ER_BAD_NULL_ERROR: {
+        status: 400,
+        message: (err) => {
+            const match = err.sqlMessage?.match(/Column '(\w+)'/);
+            const field = match ? match[1] : 'inconnu';
+            return `Le champ "${field}" est obligatoire et ne peut pas être vide.`;
+        },
+    },
+    // Pas de valeur par défaut pour un champ
+    ER_NO_DEFAULT_FOR_FIELD: {
+        status: 400,
+        message: (err) => {
+            const match = err.sqlMessage?.match(/Field '(\w+)'/);
+            const field = match ? match[1] : 'inconnu';
+            return `Le champ "${field}" est obligatoire et doit être renseigné.`;
+        },
+    },
+    // Clé étrangère : la ligne référencée n'existe pas
+    ER_NO_REFERENCED_ROW_2: {
+        status: 400,
+        message: (err) => {
+            const match = err.sqlMessage?.match(/FOREIGN KEY \(`(\w+)`\)/);
+            const field = match ? match[1] : 'inconnu';
+            return `Référence invalide : l'élément lié au champ "${field}" n'existe pas. Vérifiez que la ressource référencée existe.`;
+        },
+    },
+    // Clé étrangère : la ligne est référencée par une autre table
+    ER_ROW_IS_REFERENCED_2: {
+        status: 409,
+        message: (err) => {
+            const match = err.sqlMessage?.match(/CONSTRAINT `(\w+)`/);
+            const constraint = match ? match[1] : '';
+            return `Suppression impossible : cet élément est utilisé par d'autres données${constraint ? ` (contrainte: ${constraint})` : ''}. Supprimez d'abord les éléments liés.`;
+        },
+    },
+    // Valeur incorrecte pour le type de colonne
+    ER_TRUNCATED_WRONG_VALUE_FOR_FIELD: {
+        status: 400,
+        message: (err) => {
+            const fieldMatch = err.sqlMessage?.match(/column '(\w+)'/);
+            const field = fieldMatch ? fieldMatch[1] : 'inconnu';
+            const valueMatch = err.sqlMessage?.match(/value: '(.+?)'/);
+            const value = valueMatch ? valueMatch[1] : '?';
+            return `Valeur invalide "${value}" pour le champ "${field}". Vérifiez le format attendu (nombre, date, etc.).`;
+        },
+    },
+    ER_TRUNCATED_WRONG_VALUE: {
+        status: 400,
+        message: (err) => {
+            return `Format de donnée invalide. Vérifiez que les valeurs sont dans le bon format (nombre, date, etc.).`;
+        },
+    },
+    // Erreur de syntaxe SQL (bug côté dev)
+    ER_PARSE_ERROR: {
+        status: 500,
+        message: () => `Erreur interne de requête SQL. Contactez l'administrateur.`,
+    },
+    // Deadlock
+    ER_LOCK_DEADLOCK: {
+        status: 503,
+        message: () => `Conflit d'accès simultané à la base de données. Veuillez réessayer dans quelques instants.`,
+    },
+    // Timeout de verrouillage
+    ER_LOCK_WAIT_TIMEOUT: {
+        status: 503,
+        message: () => `Délai d'attente dépassé. La base de données est surchargée. Veuillez réessayer.`,
+    },
+    // Valeur hors limites (nombre trop grand)
+    ER_WARN_DATA_OUT_OF_RANGE: {
+        status: 400,
+        message: (err) => {
+            const match = err.sqlMessage?.match(/column '(\w+)'/);
+            const field = match ? match[1] : 'inconnu';
+            return `La valeur numérique du champ "${field}" est hors limites. Vérifiez que le nombre est dans une plage acceptable.`;
+        },
+    },
+    // Connexion refusée
+    ECONNREFUSED: {
+        status: 503,
+        message: () => `Impossible de se connecter à la base de données. Le service est peut-être indisponible.`,
+    },
+    // Connexion perdue
+    PROTOCOL_CONNECTION_LOST: {
+        status: 503,
+        message: () => `La connexion à la base de données a été perdue. Veuillez réessayer.`,
+    },
+    // Connexion timeout
+    ETIMEDOUT: {
+        status: 503,
+        message: () => `Délai de connexion à la base de données dépassé. Veuillez réessayer.`,
+    },
+    // Pool de connexions saturé
+    ER_CON_COUNT_ERROR: {
+        status: 503,
+        message: () => `Trop de connexions simultanées à la base de données. Veuillez réessayer dans quelques instants.`,
+    },
+};
+
+/**
+ * Gère une erreur SQL de manière centralisée : log + réponse HTTP adaptée
+ * @param {object} log - Instance du logger (créée via createLogger)
+ * @param {object} req - Objet requête Express
+ * @param {object} res - Objet réponse Express
+ * @param {Error} err - L'erreur capturée
+ * @param {string} context - Contexte descriptif pour le log (ex: "Création article")
+ * @returns {boolean} true si l'erreur a été gérée (réponse envoyée), false sinon
+ */
+function handleSqlError(logger, req, res, err, context = '') {
+    const errorHandler = SQL_ERROR_MAP[err.code];
+
+    if (errorHandler) {
+        const userMessage = typeof errorHandler.message === 'function'
+            ? errorHandler.message(err)
+            : errorHandler.message;
+
+        logger.error(req, err, context);
+        logger.warn(`↳ Erreur SQL connue [${err.code}]: ${userMessage}`);
+        res.status(errorHandler.status).json({ error: userMessage });
+        return true;
+    }
+
+    return false;
+}
+
 const METHOD_COLORS = {
     GET: COLORS.green,
     POST: COLORS.blue,
@@ -170,4 +321,4 @@ function createLogger(moduleName) {
     };
 }
 
-module.exports = { createLogger };
+module.exports = { createLogger, handleSqlError, SQL_ERROR_MAP };

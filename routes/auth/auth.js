@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../../config/db.js');
-const { createLogger } = require('../../utils/logger');
+const { createLogger, handleSqlError } = require('../../utils/logger');
 const log = createLogger('AUTH');
 
 // POST - Login
@@ -45,8 +45,9 @@ router.post('/api/auth/login', async (req, res) => {
             user: { id: user.id, email: user.email, name: user.name, role: user.role }
         });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur login pour ${email}`)) return;
         log.error(req, err, `Erreur login pour ${email}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la connexion.' });
     }
 });
 
@@ -83,8 +84,9 @@ router.post('/api/auth/register', async (req, res) => {
         log.success(req, 201, `Utilisateur créé: ${email} (id: ${id}, role: ${role || 'USER'})`);
         res.status(201).json({ id, message: 'Utilisateur créé avec succès' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur inscription pour ${email}`)) return;
         log.error(req, err, `Erreur inscription pour ${email}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de l\'inscription.' });
     }
 });
 
@@ -162,8 +164,9 @@ router.put('/api/auth/password', async (req, res) => {
             log.warn(`Token invalide lors du changement de mot de passe: ${err.message}`);
             return res.status(401).json({ error: 'Token invalide' });
         }
+        if (handleSqlError(log, req, res, err, 'Erreur changement de mot de passe')) return;
         log.error(req, err, 'Erreur changement de mot de passe');
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors du changement de mot de passe.' });
     }
 });
 

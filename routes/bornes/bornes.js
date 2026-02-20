@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db.js');
-const { createLogger } = require('../../utils/logger');
+const { createLogger, handleSqlError } = require('../../utils/logger');
 const log = createLogger('BORNES');
 
 // GET - Toutes les bornes
@@ -99,8 +99,9 @@ router.post('/api/bornes', async (req, res) => {
         log.success(req, 201, `Borne créée: "${name}" (id: ${id})`);
         res.status(201).json({ id, message: 'Borne créée avec succès' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur création borne "${req.body.name || '?'}"`)) return;
         log.error(req, err, `Erreur création borne "${req.body.name || '?'}"`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la création de la borne.' });
     }
 });
 
@@ -124,8 +125,9 @@ router.put('/api/bornes/:id', async (req, res) => {
         log.success(req, 200, `Borne mise à jour: id=${req.params.id}`);
         res.json({ message: 'Borne mise à jour avec succès' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur mise à jour borne id=${req.params.id}`)) return;
         log.error(req, err, `Erreur mise à jour borne id=${req.params.id}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la mise à jour de la borne.' });
     }
 });
 
@@ -142,8 +144,9 @@ router.delete('/api/bornes/:id', async (req, res) => {
         log.success(req, 200, `Borne supprimée: id=${req.params.id}`);
         res.json({ message: 'Borne supprimée avec succès' });
     } catch (err) {
+        if (handleSqlError(log, req, res, err, `Erreur suppression borne id=${req.params.id}`)) return;
         log.error(req, err, `Erreur suppression borne id=${req.params.id}`);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Erreur serveur lors de la suppression de la borne.' });
     }
 });
 
