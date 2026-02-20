@@ -56,8 +56,8 @@ router.get('/api/partners', async (req, res) => {
         const [results] = await pool.query(query, params);
         res.json(results.map(transformPartner));
     } catch (err) {
-        console.error('Error fetching partners:', err);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error('[GET /api/partners] Erreur récupération partenaires:', err.code || err.message);
+        res.status(500).json({ error: 'Erreur serveur lors de la récupération des partenaires.' });
     }
 });
 
@@ -69,8 +69,8 @@ router.get('/api/partners/categories/list', async (req, res) => {
         );
         res.json(results);
     } catch (err) {
-        console.error('Error fetching categories:', err);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error('[GET /api/partners/categories/list] Erreur:', err.code || err.message);
+        res.status(500).json({ error: 'Erreur serveur lors de la récupération des catégories.' });
     }
 });
 
@@ -83,8 +83,8 @@ router.get('/api/partners/slug/:slug', async (req, res) => {
         }
         res.json(transformPartner(results[0]));
     } catch (err) {
-        console.error('Error fetching partner:', err);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error(`[GET /api/partners/slug/${req.params.slug}] Erreur:`, err.code || err.message);
+        res.status(500).json({ error: 'Erreur serveur lors de la récupération du partenaire.' });
     }
 });
 
@@ -97,8 +97,8 @@ router.get('/api/partners/id/:id', async (req, res) => {
         }
         res.json(transformPartner(results[0]));
     } catch (err) {
-        console.error('Error fetching partner:', err);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error(`[GET /api/partners/id/${req.params.id}] Erreur:`, err.code || err.message);
+        res.status(500).json({ error: 'Erreur serveur lors de la récupération du partenaire.' });
     }
 });
 
@@ -127,8 +127,17 @@ router.post('/api/partners', async (req, res) => {
         const [newPartner] = await pool.query('SELECT * FROM partners WHERE id = ?', [id]);
         res.status(201).json(transformPartner(newPartner[0]));
     } catch (err) {
-        console.error('Error creating partner:', err);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error(`[POST /api/partners] Erreur création partenaire "${req.body.name || '?'}":`, err.code || err.message);
+        if (err.code === 'ER_DUP_ENTRY') {
+            const field = err.sqlMessage?.includes('slug') ? 'slug' : 'id';
+            console.error(`  → Doublon détecté sur le champ "${field}" (valeur: ${field === 'slug' ? req.body.slug : 'auto'})`);
+            return res.status(409).json({ error: `Un partenaire avec ce ${field === 'slug' ? 'slug (URL)' : 'identifiant'} existe déjà. Veuillez modifier le nom pour générer un slug différent.` });
+        }
+        if (err.code === 'ER_DATA_TOO_LONG') {
+            console.error(`  → Donnée trop longue:`, err.sqlMessage);
+            return res.status(400).json({ error: 'Un des champs dépasse la taille maximale autorisée.' });
+        }
+        res.status(500).json({ error: 'Erreur serveur lors de la création du partenaire.' });
     }
 });
 
@@ -161,8 +170,17 @@ router.put('/api/partners/:id', async (req, res) => {
         const [updated] = await pool.query('SELECT * FROM partners WHERE id = ?', [req.params.id]);
         res.json(transformPartner(updated[0]));
     } catch (err) {
-        console.error('Error updating partner:', err);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error(`[PUT /api/partners/${req.params.id}] Erreur mise à jour partenaire "${req.body.name || '?'}":`, err.code || err.message);
+        if (err.code === 'ER_DUP_ENTRY') {
+            const field = err.sqlMessage?.includes('slug') ? 'slug' : 'id';
+            console.error(`  → Doublon détecté sur le champ "${field}" (valeur: ${field === 'slug' ? req.body.slug : req.params.id})`);
+            return res.status(409).json({ error: `Un autre partenaire utilise déjà ce ${field === 'slug' ? 'slug (URL)' : 'identifiant'}. Veuillez modifier le nom pour générer un slug différent.` });
+        }
+        if (err.code === 'ER_DATA_TOO_LONG') {
+            console.error(`  → Donnée trop longue:`, err.sqlMessage);
+            return res.status(400).json({ error: 'Un des champs dépasse la taille maximale autorisée.' });
+        }
+        res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du partenaire.' });
     }
 });
 
@@ -175,8 +193,11 @@ router.delete('/api/partners/:id', async (req, res) => {
         }
         res.json({ message: 'Partenaire supprimé' });
     } catch (err) {
-        console.error('Error deleting partner:', err);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error(`[DELETE /api/partners/${req.params.id}] Erreur suppression:`, err.code || err.message);
+        if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+            return res.status(409).json({ error: 'Ce partenaire est référencé ailleurs et ne peut pas être supprimé.' });
+        }
+        res.status(500).json({ error: 'Erreur serveur lors de la suppression du partenaire.' });
     }
 });
 
