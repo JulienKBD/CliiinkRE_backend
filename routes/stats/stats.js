@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
+const { createLogger } = require('../../utils/logger');
+const log = createLogger('STATS');
 
 // GET all stats
 router.get('/api/stats', async (req, res) => {
+    log.request(req);
     try {
         // Count active bornes
         const [bornesResults] = await pool.query('SELECT COUNT(*) as count FROM bornes WHERE isActive = 1');
@@ -20,7 +23,7 @@ router.get('/api/stats', async (req, res) => {
             const [usersResults] = await pool.query('SELECT COUNT(*) as count FROM users');
             usersCount = usersResults[0].count;
         } catch (e) {
-            // users table might not exist
+            log.debug('Table users non disponible');
         }
 
         // Get total glass collected from site_config (stored in tonnes, returned in kg)
@@ -32,7 +35,7 @@ router.get('/api/stats', async (req, res) => {
                 totalGlassCollected = parseFloat(configResults[0].value) * 1000 || 0;
             }
         } catch (e) {
-            // site_config might not have this key
+            log.debug('Config total_glass_collected non disponible');
         }
 
         // Get total users from site_config
@@ -43,7 +46,7 @@ router.get('/api/stats', async (req, res) => {
                 totalUsers = parseInt(configResults[0].value) || usersCount;
             }
         } catch (e) {
-            // site_config might not have this key
+            log.debug('Config total_users non disponible');
         }
 
         // Get total partners from site_config (use DB count as minimum)
@@ -54,18 +57,20 @@ router.get('/api/stats', async (req, res) => {
                 totalPartners = parseInt(configResults[0].value) || partnersResults[0].count;
             }
         } catch (e) {
-            // site_config might not have this key
+            log.debug('Config total_partners non disponible');
         }
 
-        res.json({
+        const stats = {
             totalBornes: bornesResults[0].count,
             totalPartners: totalPartners,
             totalArticles: articlesResults[0].count,
             totalUsers: totalUsers,
             totalGlassCollected: totalGlassCollected
-        });
+        };
+        log.success(req, 200, `Stats: bornes=${stats.totalBornes}, partenaires=${stats.totalPartners}, articles=${stats.totalArticles}, users=${stats.totalUsers}, verre=${stats.totalGlassCollected}kg`);
+        res.json(stats);
     } catch (err) {
-        console.error('Error fetching stats:', err);
+        log.error(req, err, 'Erreur récupération statistiques');
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

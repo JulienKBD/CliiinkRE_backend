@@ -2,65 +2,79 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/db');
 const nodemailer = require('nodemailer');
+const { createLogger } = require('../../utils/logger');
+const log = createLogger('CONTACT');
 
 // Fonction pour vérifier le token reCAPTCHA (v2)
 async function verifyRecaptcha(token) {
-    if (!token) return { success: false };
+    if (!token) {
+        log.warn('reCAPTCHA: aucun token fourni');
+        return { success: false };
+    }
 
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     if (!secretKey) {
-        console.warn('reCAPTCHA secret key not configured');
+        log.warn('reCAPTCHA: clé secrète non configurée, bypass en mode dev');
         return { success: true }; // Bypass en dev si pas configuré
     }
 
     try {
+        log.debug('Vérification reCAPTCHA en cours...');
         const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `secret=${secretKey}&response=${token}`,
         });
         const data = await response.json();
+        log.debug('reCAPTCHA résultat:', data.success ? 'VALIDÉ' : 'ÉCHOUÉ');
         return { success: data.success };
     } catch (error) {
-        console.error('reCAPTCHA verification error:', error);
+        log.error({ method: 'POST', originalUrl: '/api/contact' }, error, 'Erreur vérification reCAPTCHA');
         return { success: false };
     }
 }
 
 // GET all contact messages
 router.get('/api/contact', async (req, res) => {
+    log.request(req);
     try {
         const [results] = await pool.query('SELECT * FROM contact_messages ORDER BY createdAt DESC');
+        log.success(req, 200, `${results.length} message(s) retourné(s)`);
         res.json(results);
     } catch (err) {
-        console.error('Error fetching contact messages:', err);
+        log.error(req, err, 'Erreur récupération messages');
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 // GET contact message by id
 router.get('/api/contact/:id', async (req, res) => {
+    log.request(req);
     try {
         const [results] = await pool.query('SELECT * FROM contact_messages WHERE id = ?', [req.params.id]);
         if (results.length === 0) {
+            log.warn(`Message non trouvé: id=${req.params.id}`);
             return res.status(404).json({ error: 'Message non trouvé' });
         }
+        log.success(req, 200, `Message de "${results[0].name}" (${results[0].email})`);
         res.json(results[0]);
     } catch (err) {
-        console.error('Error fetching contact message:', err);
+        log.error(req, err, `Erreur récupération message id=${req.params.id}`);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 // POST create contact message
 router.post('/api/contact', async (req, res) => {
+    log.request(req);
     try {
         const { type, name, email, message, companyName, phone, position, recaptchaToken } = req.body;
 
         // Vérifier le reCAPTCHA
+        log.info(`Nouveau message de contact: type=${type || 'PARTICULIER'}, nom=${name}, email=${email}`);
         const recaptchaResult = await verifyRecaptcha(recaptchaToken);
         if (!recaptchaResult.success) {
-            console.warn('reCAPTCHA verification failed:', recaptchaResult);
+            log.warn(`reCAPTCHA échoué pour ${email}`);
             return res.status(400).json({ error: 'Vérification anti-spam échouée. Veuillez cocher la case "Je ne suis pas un robot".' });
         }
 
@@ -69,57 +83,67 @@ router.post('/api/contact', async (req, res) => {
             'INSERT INTO contact_messages (id, type, name, email, message, companyName, phone, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [id, type || 'PARTICULIER', name, email, message, companyName || null, phone || null, position || null]
         );
+        log.success(req, 201, `Message créé: id=${id}, de ${name} (${email})`);
         res.status(201).json({ id, message: 'Message envoyé avec succès' });
     } catch (err) {
-        console.error('Error creating contact message:', err);
+        log.error(req, err, `Erreur création message de ${req.body.name || '?'}`);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 // PUT update contact message (mark as read)
 router.put('/api/contact/:id/read', async (req, res) => {
+    log.request(req);
     try {
         const [result] = await pool.query(
             'UPDATE contact_messages SET isRead = TRUE WHERE id = ?',
             [req.params.id]
         );
         if (result.affectedRows === 0) {
+            log.warn(`Message non trouvé pour marquer lu: id=${req.params.id}`);
             return res.status(404).json({ error: 'Message non trouvé' });
         }
+        log.success(req, 200, `Message marqué lu: id=${req.params.id}`);
         res.json({ message: 'Message marqué comme lu' });
     } catch (err) {
-        console.error('Error updating contact message:', err);
+        log.error(req, err, `Erreur marquage message lu id=${req.params.id}`);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 // PUT archive contact message
 router.put('/api/contact/:id/archive', async (req, res) => {
+    log.request(req);
     try {
         const [result] = await pool.query(
             'UPDATE contact_messages SET isArchived = TRUE WHERE id = ?',
             [req.params.id]
         );
         if (result.affectedRows === 0) {
+            log.warn(`Message non trouvé pour archivage: id=${req.params.id}`);
             return res.status(404).json({ error: 'Message non trouvé' });
         }
+        log.success(req, 200, `Message archivé: id=${req.params.id}`);
         res.json({ message: 'Message archivé' });
     } catch (err) {
-        console.error('Error archiving contact message:', err);
+        log.error(req, err, `Erreur archivage message id=${req.params.id}`);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 // DELETE contact message
 router.delete('/api/contact/:id', async (req, res) => {
+    log.request(req);
     try {
         const [result] = await pool.query('DELETE FROM contact_messages WHERE id = ?', [req.params.id]);
         if (result.affectedRows === 0) {
+            log.warn(`Message non trouvé pour suppression: id=${req.params.id}`);
             return res.status(404).json({ error: 'Message non trouvé' });
         }
+        log.success(req, 200, `Message supprimé: id=${req.params.id}`);
         res.json({ message: 'Message supprimé' });
     } catch (err) {
-        console.error('Error deleting contact message:', err);
+        log.error(req, err, `Erreur suppression message id=${req.params.id}`);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -161,21 +185,25 @@ const createTransporter = () => {
 
 // POST send reply to contact message
 router.post('/api/contact/:id/reply', async (req, res) => {
+    log.request(req);
     try {
         const { subject, message, replyTo } = req.body;
-        
+
         if (!subject || !message) {
+            log.warn(`Réponse message: sujet ou message manquant pour id=${req.params.id}`);
             return res.status(400).json({ error: 'Sujet et message requis' });
         }
 
         // Récupérer les informations du message original
         const [results] = await pool.query('SELECT * FROM contact_messages WHERE id = ?', [req.params.id]);
         if (results.length === 0) {
+            log.warn(`Message original non trouvé pour réponse: id=${req.params.id}`);
             return res.status(404).json({ error: 'Message non trouvé' });
         }
 
         const originalMessage = results[0];
-        
+        log.info(`Envoi réponse à ${originalMessage.email} (message id=${req.params.id}, sujet: "${subject}")`);
+
         // Créer le transporteur email
         const transporter = createTransporter();
 
@@ -191,21 +219,21 @@ router.post('/api/contact/:id/reply', async (req, res) => {
                         <h1 style="margin: 0; font-size: 24px;">Cliiink Réunion</h1>
                         <p style="margin: 5px 0 0 0; opacity: 0.9;">Réponse à votre message</p>
                     </div>
-                    
+
                     <div style="padding: 30px; background: #ffffff;">
                         <p style="color: #374151; line-height: 1.6; margin-bottom: 20px;">
                             Bonjour ${originalMessage.name},
                         </p>
-                        
+
                         <div style="background: #f9fafb; border-left: 4px solid #78d8a3; padding: 15px; margin: 20px 0;">
                             <p style="margin: 0; color: #6b7280; font-size: 14px; font-weight: 600;">Votre message :</p>
                             <p style="margin: 10px 0 0 0; color: #374151; font-style: italic;">"${originalMessage.message.substring(0, 200)}${originalMessage.message.length > 200 ? '...' : ''}"</p>
                         </div>
-                        
+
                         <div style="color: #374151; line-height: 1.6;">
                             ${message.replace(/\n/g, '<br>')}
                         </div>
-                        
+
                         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
                             <p style="color: #6b7280; font-size: 14px; margin: 0;">
                                 Cordialement,<br>
@@ -213,7 +241,7 @@ router.post('/api/contact/:id/reply', async (req, res) => {
                             </p>
                         </div>
                     </div>
-                    
+
                     <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280;">
                         <p style="margin: 0;">
                             Cliiink Réunion - Recyclage du verre<br>
@@ -228,20 +256,20 @@ router.post('/api/contact/:id/reply', async (req, res) => {
 
         // Envoyer l'email
         const info = await transporter.sendMail(mailOptions);
-        
+
         // Marquer le message comme lu s'il ne l'était pas déjà
         if (!originalMessage.isRead) {
             await pool.query('UPDATE contact_messages SET isRead = TRUE WHERE id = ?', [req.params.id]);
         }
 
-        console.log('Email sent:', info.messageId);
-        res.json({ 
+        log.success(req, 200, `Réponse envoyée à ${originalMessage.email} (messageId: ${info.messageId})`);
+        res.json({
             message: 'Réponse envoyée avec succès',
-            messageId: info.messageId 
+            messageId: info.messageId
         });
 
     } catch (err) {
-        console.error('Error sending reply:', err);
+        log.error(req, err, `Erreur envoi réponse pour message id=${req.params.id}`);
         res.status(500).json({ error: 'Erreur lors de l\'envoi de la réponse' });
     }
 });
